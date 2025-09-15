@@ -21,10 +21,6 @@ extracts:
 
 3. Run the tool:
 ```bash
-# Extract only
-./sops-entrypoint secrets.yaml config.yaml
-
-# Extract and run command with environment variables
 ./sops-entrypoint secrets.yaml config.yaml myapp --port 8080
 ```
 

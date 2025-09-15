@@ -5,11 +5,11 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"syscall"
 
 	"github.com/getsops/sops/v3/decrypt"
+	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v3"
 )
 
@@ -18,18 +18,41 @@ type Config struct {
 		Path       string `yaml:"path"`
 		OutputFile string `yaml:"output_file"`
 		EnvVar     string `yaml:"env_var"`
-		FileMode   string `yaml:"file_mode"`
 	} `yaml:"extracts"`
 }
 
 func main() {
-	if len(os.Args) < 3 {
-		log.Fatal("Usage: sops-entrypoint <source_file> <config.yaml> [command...]")
+	help := pflag.BoolP("help", "h", false, "Show help")
+	pflag.Usage = func() {
+		fmt.Println("Usage: sops-entrypoint [flags] <source_file> <config.yaml> <command> [args...]")
+		fmt.Println()
+		fmt.Println("Decrypt SOPS files and extract values to files/environment variables, then execute command")
+		fmt.Println()
+		fmt.Println("Arguments:")
+		fmt.Println("  source_file   SOPS-encrypted file to decrypt")
+		fmt.Println("  config.yaml   Configuration file with extraction rules")
+		fmt.Println("  command       Command to execute with extracted env vars")
+		fmt.Println("  args...       Arguments for the command")
+		fmt.Println()
+		fmt.Println("Flags:")
+		pflag.PrintDefaults()
+	}
+	pflag.Parse()
+
+	if *help {
+		pflag.Usage()
+		os.Exit(0)
 	}
 
-	sourceFile := os.Args[1]
-	configFile := os.Args[2]
-	command := os.Args[3:]
+	args := pflag.Args()
+	if len(args) < 3 {
+		pflag.Usage()
+		os.Exit(1)
+	}
+
+	sourceFile := args[0]
+	configFile := args[1]
+	command := args[2:]
 
 	config, err := loadConfig(configFile)
 	if err != nil {
@@ -50,9 +73,8 @@ func main() {
 	// Extract values and prepare for writing
 	var envVars []string
 	var filesToWrite []struct {
-		path     string
-		content  string
-		fileMode string
+		path    string
+		content string
 	}
 
 	for _, extract := range config.Extracts {
@@ -77,33 +99,30 @@ func main() {
 			envVars = append(envVars, fmt.Sprintf("%s=%s", extract.EnvVar, valueStr))
 		} else if extract.OutputFile != "" {
 			filesToWrite = append(filesToWrite, struct {
-				path     string
-				content  string
-				fileMode string
-			}{extract.OutputFile, valueStr, extract.FileMode})
+				path    string
+				content string
+			}{extract.OutputFile, valueStr})
 		}
 	}
 
 	// Write all files
 	for _, file := range filesToWrite {
-		if err := writeFile(file.path, file.content, file.fileMode); err != nil {
+		if err := writeFile(file.path, file.content); err != nil {
 			log.Fatalf("Failed to write %s: %v", file.path, err)
 		}
 		fmt.Printf("Extracted -> %s\n", file.path)
 	}
 
-	// Execute command if provided
-	if len(command) > 0 {
-		env := append(os.Environ(), envVars...)
-		
-		execPath, err := lookupPath(command[0])
-		if err != nil {
-			log.Fatalf("Command not found: %v", err)
-		}
-		
-		if err := syscall.Exec(execPath, command, env); err != nil {
-			log.Fatalf("Exec failed: %v", err)
-		}
+	// Execute command
+	env := append(os.Environ(), envVars...)
+
+	execPath, err := lookupPath(command[0])
+	if err != nil {
+		log.Fatalf("Command not found: %v", err)
+	}
+
+	if err := syscall.Exec(execPath, command, env); err != nil {
+		log.Fatalf("Exec failed: %v", err)
 	}
 }
 
@@ -111,7 +130,7 @@ func lookupPath(cmd string) (string, error) {
 	if strings.Contains(cmd, "/") {
 		return cmd, nil
 	}
-	
+
 	path := os.Getenv("PATH")
 	for _, dir := range strings.Split(path, ":") {
 		if dir == "" {
@@ -152,7 +171,7 @@ func getNestedValue(data map[string]interface{}, path string) interface{} {
 	// Fall back to dot-separated navigation
 	keys := strings.Split(path, ".")
 	current := data
-	
+
 	for i, key := range keys {
 		if val, ok := current[key]; ok {
 			if i == len(keys)-1 {
@@ -170,19 +189,15 @@ func getNestedValue(data map[string]interface{}, path string) interface{} {
 	return current
 }
 
-func writeFile(filename, content, fileMode string) error {
+func writeFile(filename, content string) error {
+	// Set umask to 077 to disallow access for other users
+	oldMask := syscall.Umask(int(0077))
+	defer syscall.Umask(oldMask)
+
 	dir := filepath.Dir(filename)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0700); err != nil {
 		return err
 	}
 
-	// Set umask if file_mode is specified
-	if fileMode != "" {
-		if mode, err := strconv.ParseUint(fileMode, 8, 32); err == nil {
-			oldMask := syscall.Umask(int(0777 - mode))
-			defer syscall.Umask(oldMask)
-		}
-	}
-
-	return os.WriteFile(filename, []byte(content), 0666)
+	return os.WriteFile(filename, []byte(content), 0600)
 }
