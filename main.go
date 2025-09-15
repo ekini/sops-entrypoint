@@ -47,8 +47,14 @@ func main() {
 		log.Fatalf("Failed to parse decrypted data: %v", err)
 	}
 
-	// Extract values
+	// Extract values and prepare for writing
 	var envVars []string
+	var filesToWrite []struct {
+		path     string
+		content  string
+		fileMode string
+	}
+
 	for _, extract := range config.Extracts {
 		value := getNestedValue(data, extract.Path)
 		if value == nil {
@@ -66,18 +72,24 @@ func main() {
 
 		valueStr := fmt.Sprintf("%v", value)
 
-		// Write to file if specified
-		if extract.OutputFile != "" {
-			if err := writeFile(extract.OutputFile, valueStr, extract.FileMode); err != nil {
-				log.Fatalf("Failed to write %s: %v", extract.OutputFile, err)
-			}
-			fmt.Printf("Extracted %s -> %s\n", extract.Path, extract.OutputFile)
-		}
-
-		// Add to environment if specified
+		// Either env var OR file output
 		if extract.EnvVar != "" {
 			envVars = append(envVars, fmt.Sprintf("%s=%s", extract.EnvVar, valueStr))
+		} else if extract.OutputFile != "" {
+			filesToWrite = append(filesToWrite, struct {
+				path     string
+				content  string
+				fileMode string
+			}{extract.OutputFile, valueStr, extract.FileMode})
 		}
+	}
+
+	// Write all files
+	for _, file := range filesToWrite {
+		if err := writeFile(file.path, file.content, file.fileMode); err != nil {
+			log.Fatalf("Failed to write %s: %v", file.path, err)
+		}
+		fmt.Printf("Extracted -> %s\n", file.path)
 	}
 
 	// Execute command if provided
@@ -132,6 +144,12 @@ func getNestedValue(data map[string]interface{}, path string) interface{} {
 		return data
 	}
 
+	// Try the full path as a single key first
+	if val, ok := data[path]; ok {
+		return val
+	}
+
+	// Fall back to dot-separated navigation
 	keys := strings.Split(path, ".")
 	current := data
 	
