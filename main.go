@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/getsops/sops/v3/decrypt"
 	"gopkg.in/yaml.v3"
@@ -80,16 +80,35 @@ func main() {
 
 	// Execute command if provided
 	if len(command) > 0 {
-		cmd := exec.Command(command[0], command[1:]...)
-		cmd.Env = append(os.Environ(), envVars...)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		cmd.Stdin = os.Stdin
-
-		if err := cmd.Run(); err != nil {
-			log.Fatalf("Command failed: %v", err)
+		env := append(os.Environ(), envVars...)
+		
+		execPath, err := lookupPath(command[0])
+		if err != nil {
+			log.Fatalf("Command not found: %v", err)
+		}
+		
+		if err := syscall.Exec(execPath, command, env); err != nil {
+			log.Fatalf("Exec failed: %v", err)
 		}
 	}
+}
+
+func lookupPath(cmd string) (string, error) {
+	if strings.Contains(cmd, "/") {
+		return cmd, nil
+	}
+	
+	path := os.Getenv("PATH")
+	for _, dir := range strings.Split(path, ":") {
+		if dir == "" {
+			dir = "."
+		}
+		execPath := filepath.Join(dir, cmd)
+		if info, err := os.Stat(execPath); err == nil && !info.IsDir() {
+			return execPath, nil
+		}
+	}
+	return "", fmt.Errorf("executable not found in PATH")
 }
 
 func loadConfig(filename string) (*Config, error) {
