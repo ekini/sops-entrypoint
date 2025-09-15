@@ -1,8 +1,8 @@
 extracts:
+  # will extract as env vars if there's no file
   - path: "secret"
   - path: "database.password"
     output_file: "db_password.txt"
-    env_var: "DB_PASSWORD"
+  # extract single env var
   - path: "api.key"
-    output_file: "api_key.txt"
     env_var: "API_KEY"
