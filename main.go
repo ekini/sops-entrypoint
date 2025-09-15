@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -18,6 +19,7 @@ type Config struct {
 		Path       string `yaml:"path"`
 		OutputFile string `yaml:"output_file"`
 		EnvVar     string `yaml:"env_var"`
+		FileMode   string `yaml:"file_mode"`
 	} `yaml:"extracts"`
 }
 
@@ -66,7 +68,7 @@ func main() {
 
 		// Write to file if specified
 		if extract.OutputFile != "" {
-			if err := writeFile(extract.OutputFile, valueStr); err != nil {
+			if err := writeFile(extract.OutputFile, valueStr, extract.FileMode); err != nil {
 				log.Fatalf("Failed to write %s: %v", extract.OutputFile, err)
 			}
 			fmt.Printf("Extracted %s -> %s\n", extract.Path, extract.OutputFile)
@@ -150,10 +152,19 @@ func getNestedValue(data map[string]interface{}, path string) interface{} {
 	return current
 }
 
-func writeFile(filename, content string) error {
+func writeFile(filename, content, fileMode string) error {
 	dir := filepath.Dir(filename)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
-	return os.WriteFile(filename, []byte(content), 0644)
+
+	// Set umask if file_mode is specified
+	if fileMode != "" {
+		if mode, err := strconv.ParseUint(fileMode, 8, 32); err == nil {
+			oldMask := syscall.Umask(int(0777 - mode))
+			defer syscall.Umask(oldMask)
+		}
+	}
+
+	return os.WriteFile(filename, []byte(content), 0666)
 }

@@ -36,6 +36,7 @@ extracts:
   - `path`: Dot-notation path to the value in the decrypted data
   - `output_file`: (Optional) File to write the extracted value to
   - `env_var`: (Optional) Environment variable name to set
+  - `file_mode`: (Optional) Octal file permissions (e.g., "0500", "0644")
 
 ## Requirements
 
