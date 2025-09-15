@@ -5,11 +5,13 @@ A Go utility to decrypt SOPS files and extract specific values to separate files
 ## Usage
 
 1. Build the project:
+
 ```bash
 go build -o sops-entrypoint
 ```
 
 2. Create a configuration file (see `config.example.yaml`):
+
 ```yaml
 extracts:
   - path: "database.password"
@@ -20,6 +22,7 @@ extracts:
 ```
 
 3. Run the tool:
+
 ```bash
 ./sops-entrypoint secrets.yaml config.yaml myapp --port 8080
 ```
@@ -28,7 +31,7 @@ extracts:
 
 - `extracts`: Array of extractions to perform
   - `path`: Dot-notation path to the value in the decrypted data
-  - `output_file`: (Optional) File to write the extracted value to
+  - `output_file`: (Optional) File to write the extracted value to. Files will be created with owner-only permissions (0600).
   - `env_var`: (Optional) Environment variable name to set
 
 ## Requirements
