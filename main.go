@@ -14,8 +14,7 @@ import (
 )
 
 type Config struct {
-	SourceFile string `yaml:"source_file"`
-	Extracts   []struct {
+	Extracts []struct {
 		Path       string `yaml:"path"`
 		OutputFile string `yaml:"output_file"`
 		EnvVar     string `yaml:"env_var"`
@@ -24,12 +23,13 @@ type Config struct {
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		log.Fatal("Usage: sops-entrypoint <config.yaml> [command...]")
+	if len(os.Args) < 3 {
+		log.Fatal("Usage: sops-entrypoint <source_file> <config.yaml> [command...]")
 	}
 
-	configFile := os.Args[1]
-	command := os.Args[2:]
+	sourceFile := os.Args[1]
+	configFile := os.Args[2]
+	command := os.Args[3:]
 
 	config, err := loadConfig(configFile)
 	if err != nil {
@@ -37,7 +37,7 @@ func main() {
 	}
 
 	// Decrypt the SOPS file
-	decryptedData, err := decrypt.File(config.SourceFile, "yaml")
+	decryptedData, err := decrypt.File(sourceFile, "yaml")
 	if err != nil {
 		log.Fatalf("Failed to decrypt file: %v", err)
 	}

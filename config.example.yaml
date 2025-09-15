@@ -1,4 +1,3 @@
-source_file: "secrets.yaml"
 extracts:
   - path: "secret"
   - path: "database.password"

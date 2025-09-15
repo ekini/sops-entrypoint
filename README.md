@@ -11,7 +11,6 @@ go build -o sops-entrypoint
 
 2. Create a configuration file (see `config.example.yaml`):
 ```yaml
-source_file: "secrets.yaml"
 extracts:
   - path: "database.password"
     output_file: "db_password.txt"
@@ -23,15 +22,14 @@ extracts:
 3. Run the tool:
 ```bash
 # Extract only
-./sops-entrypoint config.yaml
+./sops-entrypoint secrets.yaml config.yaml
 
 # Extract and run command with environment variables
-./sops-entrypoint config.yaml myapp --port 8080
+./sops-entrypoint secrets.yaml config.yaml myapp --port 8080
 ```
 
 ## Configuration
 
-- `source_file`: Path to the SOPS-encrypted file
 - `extracts`: Array of extractions to perform
   - `path`: Dot-notation path to the value in the decrypted data
   - `output_file`: (Optional) File to write the extracted value to
