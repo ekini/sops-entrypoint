@@ -1,0 +1,8 @@
+source_file: "secrets.yaml"
+extracts:
+  - path: "secret"
+  - path: "database.password"
+    output_file: "db_password.txt"
+    env_var: "DB_PASSWORD"
+  - path: "api.key"
+    env_var: "API_KEY"
