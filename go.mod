@@ -1,4 +1,4 @@
-module sops-entrypoint
+module github.com/ekini/sops-entrypoint
 
 go 1.21
 
