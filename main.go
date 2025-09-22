@@ -8,6 +8,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/buildkite/interpolate"
 	"github.com/getsops/sops/v3/decrypt"
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v3"
@@ -51,9 +52,23 @@ func main() {
 		os.Exit(1)
 	}
 
-	sourceFile := args[0]
+	env := interpolate.NewSliceEnv(os.Environ())
+
+	sourceFile, err := interpolate.Interpolate(env, args[0])
+	if err != nil {
+		log.Fatalf("Failed to interpolate source file: %v", err)
+	}
 	configFile := args[1]
 	command := args[2:]
+
+	// Interpolate env files
+	interpolatedEnvFiles := make([]string, len(*envFiles))
+	for i, envFile := range *envFiles {
+		interpolatedEnvFiles[i], err = interpolate.Interpolate(env, envFile)
+		if err != nil {
+			log.Fatalf("Failed to interpolate env file %s: %v", envFile, err)
+		}
+	}
 
 	config, err := loadConfig(configFile)
 	if err != nil {
@@ -115,7 +130,7 @@ func main() {
 	}
 
 	// Load env files
-	for _, envFile := range *envFiles {
+	for _, envFile := range interpolatedEnvFiles {
 		envVarsFromFile, err := loadEnvFile(envFile)
 		if err != nil {
 			log.Fatalf("Failed to load env file %s: %v", envFile, err)
@@ -124,14 +139,14 @@ func main() {
 	}
 
 	// Execute command
-	env := append(os.Environ(), envVars...)
+	execEnv := append(os.Environ(), envVars...)
 
 	execPath, err := lookupPath(command[0])
 	if err != nil {
 		log.Fatalf("Command not found: %v", err)
 	}
 
-	if err := syscall.Exec(execPath, command, env); err != nil {
+	if err := syscall.Exec(execPath, command, execEnv); err != nil {
 		log.Fatalf("Exec failed: %v", err)
 	}
 }
