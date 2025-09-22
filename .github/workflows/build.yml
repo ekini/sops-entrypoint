@@ -10,13 +10,13 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  GO_VERSION: 1.21
+  GO_VERSION: 1.22
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: actions/setup-go@v5
         with:
@@ -25,7 +25,7 @@ jobs:
       - name: Run tests
         run: go test -v ./...
 
-      - uses: ko-build/setup-ko@v0.7
+      - uses: ko-build/setup-ko@v0.9
 
       - name: Build (no push)
         run: ko build --local --platform=linux/amd64,linux/arm64 .
@@ -39,13 +39,13 @@ jobs:
       packages: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: actions/setup-go@v5
         with:
           go-version: "${{ env.GO_VERSION }}"
 
-      - uses: ko-build/setup-ko@v0.7
+      - uses: ko-build/setup-ko@v0.9
 
       - name: Log in to Container Registry
         uses: docker/login-action@v3
