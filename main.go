@@ -23,6 +23,7 @@ type Config struct {
 
 func main() {
 	help := pflag.BoolP("help", "h", false, "Show help")
+	envFiles := pflag.StringSlice("env-file", nil, "YAML file with environment variables (can be repeated)")
 	pflag.Usage = func() {
 		fmt.Println("Usage: sops-entrypoint [flags] <source_file> <config.yaml> <command> [args...]")
 		fmt.Println()
@@ -113,6 +114,15 @@ func main() {
 		fmt.Printf("Extracted -> %s\n", file.path)
 	}
 
+	// Load env files
+	for _, envFile := range *envFiles {
+		envVarsFromFile, err := loadEnvFile(envFile)
+		if err != nil {
+			log.Fatalf("Failed to load env file %s: %v", envFile, err)
+		}
+		envVars = append(envVars, envVarsFromFile...)
+	}
+
 	// Execute command
 	env := append(os.Environ(), envVars...)
 
@@ -187,6 +197,24 @@ func getNestedValue(data map[string]interface{}, path string) interface{} {
 		}
 	}
 	return current
+}
+
+func loadEnvFile(filename string) ([]string, error) {
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	var envData map[string]interface{}
+	if err := yaml.Unmarshal(data, &envData); err != nil {
+		return nil, err
+	}
+
+	var envVars []string
+	for k, v := range envData {
+		envVars = append(envVars, fmt.Sprintf("%s=%v", k, v))
+	}
+	return envVars, nil
 }
 
 func writeFile(filename, content string) error {

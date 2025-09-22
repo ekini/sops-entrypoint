@@ -114,3 +114,46 @@ func TestLookupPath(t *testing.T) {
 		t.Error("Expected error for nonexistent command")
 	}
 }
+
+func TestLoadEnvFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	envFile := filepath.Join(tmpDir, "env.yaml")
+
+	envContent := `DEBUG: "true"
+LOG_LEVEL: "info"
+PORT: 8080
+`
+
+	if err := os.WriteFile(envFile, []byte(envContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	envVars, err := loadEnvFile(envFile)
+	if err != nil {
+		t.Fatalf("loadEnvFile failed: %v", err)
+	}
+
+	if len(envVars) != 3 {
+		t.Errorf("Expected 3 env vars, got %d", len(envVars))
+	}
+
+	expected := map[string]bool{
+		"DEBUG=true":     false,
+		"LOG_LEVEL=info": false,
+		"PORT=8080":      false,
+	}
+
+	for _, envVar := range envVars {
+		if _, exists := expected[envVar]; exists {
+			expected[envVar] = true
+		} else {
+			t.Errorf("Unexpected env var: %s", envVar)
+		}
+	}
+
+	for envVar, found := range expected {
+		if !found {
+			t.Errorf("Expected env var not found: %s", envVar)
+		}
+	}
+}
