@@ -75,7 +75,19 @@ func main() {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
+	var envVars []string
+	// Load env files
+	for _, envFile := range interpolatedEnvFiles {
+		fmt.Println("Adding environment variables from", envFile)
+		envVarsFromFile, err := loadEnvFile(envFile)
+		if err != nil {
+			log.Fatalf("Failed to load env file %s: %v", envFile, err)
+		}
+		envVars = append(envVars, envVarsFromFile...)
+	}
+
 	// Decrypt the SOPS file
+	fmt.Println("Decrypting", sourceFile)
 	decryptedData, err := decrypt.File(sourceFile, "yaml")
 	if err != nil {
 		log.Fatalf("Failed to decrypt file: %v", err)
@@ -87,7 +99,6 @@ func main() {
 	}
 
 	// Extract values and prepare for writing
-	var envVars []string
 	var filesToWrite []struct {
 		path    string
 		content string
@@ -127,15 +138,6 @@ func main() {
 			log.Fatalf("Failed to write %s: %v", file.path, err)
 		}
 		fmt.Printf("Extracted -> %s\n", file.path)
-	}
-
-	// Load env files
-	for _, envFile := range interpolatedEnvFiles {
-		envVarsFromFile, err := loadEnvFile(envFile)
-		if err != nil {
-			log.Fatalf("Failed to load env file %s: %v", envFile, err)
-		}
-		envVars = append(envVars, envVarsFromFile...)
 	}
 
 	// Execute command
