@@ -157,3 +157,29 @@ PORT: 8080
 		}
 	}
 }
+
+func TestLoadEnvFileDuplicateKey(t *testing.T) {
+	tmpDir := t.TempDir()
+	envFile := filepath.Join(tmpDir, "env.yaml")
+
+	// A repeated key within a single file is rejected by the YAML parser.
+	envContent := `FOO: first
+FOO: second
+`
+
+	if err := os.WriteFile(envFile, []byte(envContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := loadEnvFile(envFile); err == nil {
+		t.Error("Expected error for duplicate key, got nil")
+	}
+}
+
+func TestLoadEnvFileMissing(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "does_not_exist.yaml")
+
+	if _, err := loadEnvFile(missing); err == nil {
+		t.Error("Expected error for missing env file, got nil")
+	}
+}
