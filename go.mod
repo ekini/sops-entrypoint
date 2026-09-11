@@ -5,7 +5,7 @@ go 1.27
 require (
 	github.com/buildkite/interpolate v0.1.5
 	github.com/getsops/sops/v3 v3.8.1
-	github.com/spf13/pflag v1.0.5
+	github.com/spf13/pflag v1.0.10
 	gopkg.in/yaml.v3 v3.0.1
 )
 
