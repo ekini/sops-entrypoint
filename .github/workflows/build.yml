@@ -3,9 +3,12 @@ name: Build and Push Container
 on:
   push:
     branches: [main]
-    tags: ["v*"]
   pull_request:
     branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
 
 env:
   REGISTRY: ghcr.io
@@ -29,16 +32,31 @@ jobs:
       - name: Build (no push)
         run: ko build --local --platform=linux/amd64,linux/arm64 .
 
+  release_please:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    needs: test
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - id: release
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5
+        with:
+          release-type: go
+
   push:
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: test
+    if: needs.release_please.outputs.release_created == 'true'
+    needs: release_please
     permissions:
       contents: read
       packages: write
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.release_please.outputs.tag_name }}
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
@@ -55,6 +73,7 @@ jobs:
 
       - name: Build and push tag
         run: |
-          ko build --bare --platform=linux/amd64,linux/arm64 --tags ${GITHUB_REF#refs/tags/},latest .
+          ko build --bare --platform=linux/amd64,linux/arm64 --tags ${TAG},latest .
         env:
+          TAG: ${{ needs.release_please.outputs.tag_name }}
           KO_DOCKER_REPO: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
