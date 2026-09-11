@@ -1,8 +1,9 @@
 module github.com/ekini/sops-entrypoint
 
-go 1.22
+go 1.27
 
 require (
+	github.com/buildkite/interpolate v0.1.5
 	github.com/getsops/sops/v3 v3.8.1
 	github.com/spf13/pflag v1.0.5
 	gopkg.in/yaml.v3 v3.0.1
@@ -35,7 +36,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.23.1 // indirect
 	github.com/aws/smithy-go v1.15.0 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
-	github.com/buildkite/interpolate v0.1.5 // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
 	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
